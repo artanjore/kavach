@@ -6,10 +6,11 @@ from pathlib import Path
 from fastapi import FastAPI
 from sqlalchemy.orm import Session
 
+from .config import settings
 from .db import Base, SessionLocal, engine
 from .models import ScamNumber
 from .risk.phone import normalize
-from .routers import admin, bank, protect, users, whatsapp
+from .routers import admin, bank, demo, protect, users, whatsapp
 
 logging.basicConfig(level=logging.INFO)
 SEED = Path(__file__).resolve().parent.parent / "data" / "scam_numbers_seed.json"
@@ -34,8 +35,14 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Kavach API", version="0.1.0", lifespan=lifespan)
-for r in (users.router, protect.router, whatsapp.router, bank.router, admin.router):
+for r in (users.router, users.join_router, protect.router, whatsapp.router, bank.router, admin.router, demo.router):
     app.include_router(r)
+
+
+@app.get("/", include_in_schema=False)
+def root():
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse("/demo" if settings.is_dev else "/docs")
 
 
 @app.get("/healthz")

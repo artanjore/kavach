@@ -44,6 +44,11 @@ class Prefs(context: Context) {
         get() = sp.getString("active_call", null)?.let { JSONObject(it) }
         set(v) = sp.edit().putString("active_call", v?.toString()).apply()
 
+    /** Pairing code from a scanned QR, used once the guardian has logged in. */
+    var pendingJoinCode: String?
+        get() = sp.getString("pending_join", null)
+        set(v) = sp.edit().putString("pending_join", v).apply()
+
     val loggedIn get() = token != null
 
     fun clear() = sp.edit().clear().apply()

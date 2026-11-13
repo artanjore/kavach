@@ -45,6 +45,20 @@ class Api(private val prefs: Prefs) {
 
     fun arr(path: String) = JSONArray(request("GET", path))
 
+    /** Raw bytes (e.g. the pairing QR PNG). */
+    fun bytes(path: String): ByteArray {
+        val conn = URL(prefs.apiBase + path).openConnection() as HttpURLConnection
+        try {
+            conn.connectTimeout = 10_000
+            conn.readTimeout = 10_000
+            prefs.token?.let { conn.setRequestProperty("Authorization", "Bearer $it") }
+            if (conn.responseCode !in 200..299) throw ApiError(conn.responseCode, "HTTP ${conn.responseCode}")
+            return conn.inputStream.use { it.readBytes() }
+        } finally {
+            conn.disconnect()
+        }
+    }
+
     companion object {
         private val pool = Executors.newFixedThreadPool(3)
         private val main = Handler(Looper.getMainLooper())

@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Kavach – bank partner console</title>
+<style>
+ body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:#f4f6f8;color:#111}
+ header{background:#0f2747;color:#fff;padding:1rem 1.5rem;display:flex;gap:1rem;align-items:center;flex-wrap:wrap}
+ header h1{font-size:1.15rem;margin:0}
+ header .sp{flex:1}
+ input{font:inherit;padding:.45rem .6rem;border-radius:6px;border:1px solid #ccd}
+ button{font:inherit;padding:.45rem .9rem;border-radius:6px;border:0;background:#2E7D32;color:#fff;cursor:pointer}
+ main{max-width:1100px;margin:1.5rem auto;padding:0 1rem}
+ .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:.8rem}
+ .tile{background:#fff;border:1px solid #dde3ea;border-radius:12px;padding:1rem}
+ .tile .v{font-size:1.8rem;font-weight:800}.tile .k{color:#555;font-size:.85rem}
+ h2{font-size:1rem;margin:1.6rem 0 .6rem}
+ table{width:100%;border-collapse:collapse;background:#fff;border:1px solid #dde3ea;border-radius:12px;overflow:hidden;font-size:.9rem}
+ th,td{text-align:left;padding:.55rem .7rem;border-bottom:1px solid #eef1f4}
+ th{background:#f8fafc;font-weight:600;color:#444}
+ .pill{display:inline-block;padding:.1rem .55rem;border-radius:999px;font-size:.78rem;font-weight:700;color:#fff}
+ .pending{background:#EF6C00}.approved{background:#2E7D32}.declined{background:#C62828}.expired{background:#607D8B}
+ .muted{color:#666;font-size:.85rem}
+ .err{color:#C62828}
+</style></head>
+<body>
+<header><h1>🛡️ Kavach · Bank partner console</h1><span class="sp"></span>
+ <input id="key" type="password" placeholder="Bank API key" size="22"><button id="go">Load</button>
+ <label style="font-size:.85rem"><input type="checkbox" id="auto" checked> auto-refresh</label></header>
+<main>
+ <p class="muted">Senior customers enrolled in Kavach, transfers paused for the trusted person's decision, and the audit trail. In the dev demo the key is <code>dev-bank-key</code>.</p>
+ <div id="out"></div>
+</main>
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+$("key").value = localStorage.getItem("kavachBankKey") || "";
+async function load() {
+  const key = $("key").value.trim();
+  if (!key) return;
+  localStorage.setItem("kavachBankKey", key);
+  const r = await fetch("/v1/bank/dashboard", { headers: { "X-API-Key": key } });
+  if (!r.ok) { $("out").innerHTML = `<p class="err">Could not load (HTTP ${r.status}). Check the API key.</p>`; return; }
+  const d = await r.json();
+  const hs = d.holds_by_status, total = Object.values(hs).reduce((a, b) => a + b, 0);
+  const decided = (hs.approved || 0) + (hs.declined || 0);
+  const tile = (k, v) => `<div class="tile"><div class="v">${esc(v)}</div><div class="k">${esc(k)}</div></div>`;
+  $("out").innerHTML = `<div class="tiles">
+    ${tile("Enrolled senior customers", d.enrolled_seniors)}
+    ${tile("Transfers paused", total)}
+    ${tile("Declined by trusted person", hs.declined || 0)}
+    ${tile("Value stopped", "₹" + d.declined_amount_rupees.toLocaleString("en-IN"))}
+    ${tile("Family decided in time", total ? Math.round(100 * decided / total) + "%" : "–")}
+    ${tile("Scam-call warnings to customers", d.alerts_by_kind.call_warning || 0)}
+  </div>
+  <h2>Recent paused transfers</h2>
+  <table><tr><th>Event</th><th>Amount</th><th>Payee</th><th>Status</th><th>Decided</th><th>Expires</th></tr>
+  ${d.recent_holds.map((h) => `<tr><td>${esc(h.event_id)}</td><td>₹${(h.amount_paise / 100).toLocaleString("en-IN")}</td><td>${esc(h.payee_label)}</td>
+    <td><span class="pill ${esc(h.status)}">${esc(h.status)}</span></td><td>${esc((h.decided_at || "").replace("T", " ").slice(0, 16))}</td><td>${esc(h.expires_at.replace("T", " ").slice(0, 16))}</td></tr>`).join("") || `<tr><td colspan="6" class="muted">No transfers paused yet.</td></tr>`}
+  </table>
+  <h2>Customer alerts by type</h2>
+  <table><tr><th>Type</th><th>Count</th></tr>${Object.entries(d.alerts_by_kind).map(([k, v]) => `<tr><td>${esc(k)}</td><td>${v}</td></tr>`).join("") || `<tr><td colspan="2" class="muted">None yet.</td></tr>`}</table>
+  <h2>Audit log (your API calls)</h2>
+  <table><tr><th>Time (UTC)</th><th>Action</th><th>Target</th></tr>${d.audit.map((a) => `<tr><td>${esc(a.at.replace("T", " ").slice(0, 19))}</td><td>${esc(a.action)}</td><td>${esc(a.target)}</td></tr>`).join("") || `<tr><td colspan="3" class="muted">Empty.</td></tr>`}</table>`;
+}
+$("go").onclick = load;
+$("key").addEventListener("keydown", (e) => e.key === "Enter" && load());
+setInterval(() => $("auto").checked && load(), 5000);
+load();
+</script>
+</body></html>

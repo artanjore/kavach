@@ -21,11 +21,17 @@ class OnboardingActivity : BaseActivity() {
         stepLanguage()
     }
 
+    /** Arrived from a scanned QR: whoever scans it is the family member. */
+    private val joiningFromQr get() = prefs.pendingJoinCode != null
+
     private fun stepLanguage() {
         val col = Ui.screen(this)
         col.addView(Ui.title(this, "भाषा / भाषा / Language"))
         listOf("hi" to "हिन्दी", "mr" to "मराठी", "en" to "English").forEach { (code, label) ->
-            col.addView(Ui.button(this, label) { prefs.language = code; stepRole() })
+            col.addView(Ui.button(this, label) {
+                prefs.language = code
+                if (joiningFromQr) { prefs.role = "guardian"; stepPhone() } else stepRole()
+            })
         }
     }
 
@@ -120,6 +126,7 @@ class OnboardingActivity : BaseActivity() {
             val col = Ui.screen(this)
             col.addView(Ui.title(this, s("add_family")))
             col.addView(Ui.body(this, s("show_code")))
+            col.addView(QrView.create(this, r.getString("code")))
             col.addView(TextView(this).apply {
                 text = r.getString("code").chunked(3).joinToString(" ")
                 textSize = 64f; setTextColor(Ui.INK); textAlignment = TextView.TEXT_ALIGNMENT_CENTER
@@ -133,6 +140,7 @@ class OnboardingActivity : BaseActivity() {
         val col = Ui.screen(this)
         col.addView(Ui.title(this, s("join_code")))
         val code = Ui.input(this, "123 456", InputType.TYPE_CLASS_NUMBER)
+        prefs.pendingJoinCode?.let { code.setText(it); prefs.pendingJoinCode = null }
         col.addView(code)
         col.addView(Ui.button(this, s("next"), Ui.GREEN) {
             call("POST", "/v1/pairing/join", json("code" to code.text.toString().filter { it.isDigit() })) { finishOnboarding() }

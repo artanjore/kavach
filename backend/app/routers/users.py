@@ -2,7 +2,11 @@
 import secrets
 from datetime import timedelta
 
+import io
+
+import segno
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import HTMLResponse, Response
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -152,7 +156,37 @@ def create_pairing_code(user: User = Depends(auth.current_user), db: Session = D
     code = f"{secrets.randbelow(10**6):06d}"
     db.add(PairingCode(code=code, senior_id=user.id, expires_at=now() + timedelta(minutes=15)))
     db.commit()
-    return {"code": code, "expires_in_s": 900}
+    return {"code": code, "expires_in_s": 900, "join_url": join_url(code)}
+
+
+def join_url(code: str) -> str:
+    return f"{settings.public_url}/join?code={code}"
+
+
+@router.get("/pairing/qr.png")
+def pairing_qr(code: str, user: User = Depends(auth.current_user), db: Session = Depends(get_db)):
+    """QR of the join link. The guardian scans it with any camera app."""
+    pc = db.get(PairingCode, code)
+    if not pc or pc.senior_id != user.id or pc.used or pc.expires_at < now():
+        raise HTTPException(404, "code not found or expired")
+    buf = io.BytesIO()
+    segno.make(join_url(code), error="m").save(buf, kind="png", scale=10, border=2)
+    return Response(buf.getvalue(), media_type="image/png")
+
+
+join_router = APIRouter(tags=["pairing"])
+
+
+@join_router.get("/join", response_class=HTMLResponse)
+def join_page(code: str = ""):
+    """Where the QR lands. Opens the app if installed, otherwise shows the code to type."""
+    safe = "".join(c for c in code if c.isdigit())[:6]
+    return f"""<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Join Kavach</title><style>body{{font-family:system-ui,sans-serif;max-width:28rem;margin:2rem auto;padding:1rem;text-align:center;color:#111}}
+.code{{font-size:3.5rem;letter-spacing:.3rem;font-weight:700;margin:1rem 0}}a.btn{{display:block;background:#2E7D32;color:#fff;padding:1.1rem;border-radius:14px;font-size:1.4rem;text-decoration:none}}</style></head>
+<body><h1>Kavach</h1><p>You have been invited to look out for a family member.</p><div class="code">{safe[:3]} {safe[3:]}</div>
+<a class="btn" href="kavach://join?code={safe}">Open in the Kavach app</a>
+<p>No app yet? Install Kavach, choose "I am a family member", and type this code.</p></body></html>"""
 
 
 class JoinBody(BaseModel):

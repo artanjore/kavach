@@ -11,16 +11,44 @@ kavach/
 │   ├── app/services/   auth (OTP), alerts fan-out, WhatsApp/push outbox, i18n (en/hi/mr), privacy notice
 │   ├── data/           seed scam numbers (placeholders) + labelled message eval set
 │   ├── scripts/        eval_checker.py
-│   └── tests/          25 tests
+│   ├── app/static/     web prototype (/demo) and bank console (/bank)
+│   └── tests/          27 tests
 ├── android/            Kotlin app, framework APIs only (no third-party libraries)
 └── docs/               BANK_API.md, PLAY_POLICY.md, PRIVACY.md
 ```
+
+## Try the working prototype (2 minutes)
+
+```bash
+cd backend
+pip install -r requirements.txt
+KAVACH_ENV=dev uvicorn app.main:app --port 8000
+```
+
+Open **http://localhost:8000** and press **Start new demo**. You get three panels:
+
+- **Senior's phone** (Kamla-ji, Hindi/Marathi/English): big help button, spoken checklist, message checker, report & recover, family permissions, pairing QR.
+- **Guardian's phone** (Rohit): live alerts, one-tap call-back, approve/decline a paused bank transfer.
+- **Control panel**:
+  - ring her phone from a scam-list, spoofed, international or ordinary number
+  - jump 15 minutes into a call (long-call nudge)
+  - forward messages to the WhatsApp bot
+  - have the bank pause a ₹75,000 transfer
+  - watch the PRD's success metrics
+
+Every button calls the real API, and the API calls are listed live at the bottom. The bank partner console is at **http://localhost:8000/bank** (key `dev-bank-key`).
+
+Things to try for a pitch: ring the "CBI officer" number (red warning spoken in Hindi, and Rohit gets a WhatsApp alert); press the help button and answer "yes"; bank-pause a transfer and decline it on Rohit's phone (the bank console shows ₹ stopped).
+
+**Android APK:** every push to `main` builds a debug APK in GitHub Actions. Open the repo's **Actions** tab, click the latest run, and download `kavach-debug-apk`. Install it on an Android 10+ phone, long-press the title on "Family & privacy" to set the server address to your laptop (e.g. `http://192.168.1.20:8000`, same Wi-Fi), and go.
+
+**Hosting it:** `backend/Dockerfile` runs on any container host (Render, Railway, Fly.io, Cloud Run in Mumbai). Set `KAVACH_ENV=dev` for a public demo with fake data, `PUBLIC_URL` to its address, and `KAVACH_ENV=prod` plus the real keys from `.env.example` for real users.
 
 ## Feature status
 
 | PRD | Feature | Backend | Android | Notes |
 |---|---|---|---|---|
-| F1 | Paired onboarding | ✅ OTP login, 6-digit pairing code, senior-controlled permissions, consent log | ✅ language → role → OTP → notice read aloud → call-screening role → pairing code | QR code not done (code is typed); SMS provider not wired (dev returns OTP) |
+| F1 | Paired onboarding | ✅ OTP login, pairing code + QR, senior-controlled permissions, consent log | ✅ language → role → OTP → notice read aloud → call-screening role → QR; scanning the QR opens the app (`kavach://join`) | SMS provider not wired (dev returns OTP) |
 | F2 | Pre-answer call warning | ✅ scam list, ≥3 user reports, number shape (+91 spoofing, international, 1600-series), repeat calls | ✅ `CallScreeningService` + full-screen warning + spoken in her language + offline scam-list cache | Never blocks a call; warns only |
 | F3 | "Am I being scammed?" | ✅ alerts guardian on press; 5-question checklist; any "yes" → stop screen | ✅ big button, spoken questions, home-screen widget, works offline with family numbers | |
 | F4 | Guardian alerts | ✅ WhatsApp template + push hook + in-app inbox, respects senior's permissions | ✅ guardian screen with one-tap call-back | Push (FCM) is a stub: needs a Firebase project |
@@ -30,7 +58,7 @@ kavach/
 | F8 | Weekly voice briefing | ❌ | ❌ | P2; not started |
 | F9 | Bank risk events + trusted-person approval | ✅ idempotent events, 24h cooling-off before a guardian gains approval power, expiry, bank callback + polling | ✅ approve/decline in guardian screen | See docs/BANK_API.md |
 | F10 | Human helper line | ❌ | ❌ | Needs telephony provider + responders |
-| F11 | Bank dashboard | ✅ JSON API (`/v1/bank/dashboard`) | n/a | No web UI yet |
+| F11 | Bank dashboard | ✅ API + web console at `/bank` | n/a | |
 | — | DPDP basics | ✅ itemised notice (en/hi/mr), consent records, export, delete | ✅ notice read aloud, delete my data | Legal review required |
 | — | MVP metrics | ✅ `/v1/admin/metrics` | | activated pairs, weekly active, alert precision, false alarms, guardian response time |
 
@@ -39,7 +67,7 @@ kavach/
 ```bash
 cd backend
 pip install -r requirements.txt
-python -m pytest -q                 # 25 tests
+python -m pytest -q                 # 27 tests
 python scripts/eval_checker.py      # message checker accuracy on data/message_eval.jsonl (rules only)
 KAVACH_ENV=dev uvicorn app.main:app --reload --port 8000
 # open http://localhost:8000/docs for the interactive API
@@ -65,10 +93,9 @@ a network-security config if you use plain HTTP on a real device).
 Test the call warning: add `+919000000001` (a seeded placeholder "scam" number)
 to a second phone, or use the emulator's extended controls → Phone → call in.
 
-**Verification status:** the Kotlin sources compile cleanly against the Android 15
-framework classes, but the APK itself has not been built or run on a device (the build
-machine had no Android SDK). Expect a short round of fixes in Android Studio,
-mainly in the manifest and resources.
+**Verification status:** CI builds the APK on every push (see the Actions tab). It
+has not yet been run on a real phone, so the call-screening role prompt, the full-screen
+warning over the lock screen and text-to-speech voices all need a device test.
 
 ## Before launch (not code)
 

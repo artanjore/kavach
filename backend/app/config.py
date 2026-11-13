@@ -17,6 +17,8 @@ class Settings:
     env: str = field(default_factory=lambda: _env("KAVACH_ENV", "dev"))
     database_url: str = field(default_factory=lambda: _env("DATABASE_URL", "sqlite:///./kavach.db"))
 
+    public_url: str = field(default_factory=lambda: _env("PUBLIC_URL", "http://localhost:8000").rstrip("/"))
+
     # WhatsApp Cloud API
     wa_token: str = field(default_factory=lambda: _env("WHATSAPP_TOKEN"))
     wa_phone_number_id: str = field(default_factory=lambda: _env("WHATSAPP_PHONE_NUMBER_ID"))

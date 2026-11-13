@@ -106,7 +106,10 @@ def dashboard(bank: str = Depends(auth.bank_caller), db: Session = Depends(get_d
     prevented = db.scalar(select(func.sum(TransferHold.amount_paise)).where(TransferHold.bank_code == bank,
                                                                             TransferHold.status == "declined")) or 0
     log_rows = db.scalars(select(AuditLog).where(AuditLog.actor == f"bank:{bank}").order_by(AuditLog.id.desc()).limit(50)).all()
-    return {"enrolled_seniors": enrolled, "holds_by_status": by_status, "alerts_by_kind": alerts,
+    recent = db.scalars(select(TransferHold).where(TransferHold.bank_code == bank).order_by(TransferHold.id.desc()).limit(25)).all()
+    for h in recent:
+        _expire(db, h)
+    return {"enrolled_seniors": enrolled, "recent_holds": [_hold_json(h) for h in recent], "holds_by_status": by_status, "alerts_by_kind": alerts,
             "declined_amount_rupees": prevented / 100,
             "audit": [{"at": a.created_at.isoformat(), "action": a.action, "target": a.target} for a in log_rows]}
 

@@ -3,6 +3,7 @@ package com.kavach.app.ui
 import android.content.Intent
 import android.os.Bundle
 import com.kavach.app.data.Api
+import com.kavach.app.data.json
 import org.json.JSONArray
 
 /** Senior home screen. Routes to onboarding or the guardian screen when needed. */
@@ -10,9 +11,30 @@ class MainActivity : BaseActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        if (!prefs.loggedIn) { startActivity(Intent(this, OnboardingActivity::class.java)); finish(); return }
-        if (prefs.role == "guardian") { startActivity(Intent(this, GuardianActivity::class.java)); finish(); return }
+        route(intent)
     }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        route(intent)
+    }
+
+    private fun route(i: Intent?) {
+        // kavach://join?code=123456 from the pairing QR
+        i?.data?.takeIf { it.scheme == "kavach" && it.host == "join" }?.getQueryParameter("code")
+            ?.filter { it.isDigit() }?.takeIf { it.length == 6 }?.let { prefs.pendingJoinCode = it }
+
+        if (!prefs.loggedIn) { startActivity(Intent(this, OnboardingActivity::class.java)); finish(); return }
+        if (prefs.role == "guardian") {
+            val code = prefs.pendingJoinCode
+            if (code != null) {
+                prefs.pendingJoinCode = null
+                call("POST", "/v1/pairing/join", json("code" to code)) { goGuardian() }
+            } else goGuardian()
+        }
+    }
+
+    private fun goGuardian() { startActivity(Intent(this, GuardianActivity::class.java)); finish() }
 
     override fun onResume() {
         super.onResume()

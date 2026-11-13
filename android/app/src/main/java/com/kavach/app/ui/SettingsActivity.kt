@@ -53,6 +53,7 @@ class SettingsActivity : BaseActivity() {
 
     private fun showCode() = call("POST", "/v1/pairing/code") { r ->
         android.app.AlertDialog.Builder(this).setTitle(s("show_code"))
+            .setView(QrView.create(this, r.getString("code")))
             .setMessage(r.getString("code").chunked(3).joinToString(" "))
             .setPositiveButton(s("done"), null).show()
     }

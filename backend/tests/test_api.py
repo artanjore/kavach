@@ -169,3 +169,26 @@ def test_bank_auth_and_metrics(client):
     assert client.get("/v1/bank/dashboard", headers={"X-API-Key": "nope"}).status_code == 401
     m = client.get("/v1/admin/metrics", headers={"X-Admin-Token": "dev-admin"}).json()
     assert m["activated_pairs"] >= 1
+
+
+def test_qr_and_join_page(client, pair):
+    c = client.post("/v1/pairing/code", headers=pair["s_h"]).json()
+    assert c["join_url"].endswith(f"/join?code={c['code']}")
+    r = client.get(f"/v1/pairing/qr.png?code={c['code']}", headers=pair["s_h"])
+    assert r.status_code == 200 and r.content[:4] == b"\x89PNG"
+    assert client.get(f"/v1/pairing/qr.png?code={c['code']}", headers=pair["g_h"]).status_code == 404  # not their code
+    page = client.get(f"/join?code={c['code']}").text
+    assert f"kavach://join?code={c['code']}" in page
+    assert "<script" not in client.get("/join?code=<script>alert(1)</script>").text
+
+
+def test_demo_setup_and_pages(client):
+    d = client.post("/v1/demo/setup?senior_lang=mr").json()
+    s_h = {"Authorization": f"Bearer {d['senior']['token']}"}
+    r = client.post("/v1/calls/screen", json={"number": "+919000000001"}, headers=s_h).json()
+    assert r["level"] == "warn" and "सावध" in r["speak"]
+    assert client.get(f"/v1/demo/outbox?to=%2B{d['guardian']['phone'][1:]}").json()[0]["channel"] == "whatsapp"
+    hold = client.post("/v1/bank/risk-events", headers={"X-API-Key": d["bank"]["api_key"]},
+                       json={"event_id": "DEMO-1", "customer_ref": d["senior"]["customer_ref"], "amount_paise": 6_000_000}).json()
+    assert hold["status"] == "pending"  # demo pair skips the cooling-off
+    assert "Kavach" in client.get("/demo").text and "Bank partner console" in client.get("/bank").text

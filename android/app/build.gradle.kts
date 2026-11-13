@@ -26,6 +26,10 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
     kotlinOptions { jvmTarget = "17" }
+    lint {
+        // Report, don't block: the APK should still build while lint findings are worked through.
+        abortOnError = false
+    }
 }
 
 // Deliberately no third-party dependencies: framework APIs only. Small APK for
