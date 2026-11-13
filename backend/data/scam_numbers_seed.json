@@ -1,0 +1,8 @@
+{
+  "_note": "PLACEHOLDER numbers for development only. Replace with numbers from your own user reports, partner banks and public advisories before launch. Do not ship unverified numbers: a wrong entry tells a senior a genuine caller is a scammer.",
+  "numbers": [
+    {"number": "+919000000001", "category": "digital_arrest"},
+    {"number": "+919000000002", "category": "courier_customs"},
+    {"number": "+919000000003", "category": "kyc_block"}
+  ]
+}

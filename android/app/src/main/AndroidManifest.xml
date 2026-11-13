@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Permissions. Deliberately NOT requested: READ_CALL_LOG, READ_SMS, READ_CONTACTS,
+         RECORD_AUDIO, CALL_PHONE. See docs/PLAY_POLICY.md. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Lets the call warning appear over the lock screen while the phone rings. -->
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+    <!-- F6 long-call nudge only: call state (ringing/off-hook/idle), never the number or audio. Optional. -->
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+
+    <application
+        android:name=".KavachApp"
+        android:allowBackup="false"
+        android:icon="@android:drawable/ic_lock_lock"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@android:style/Theme.DeviceDefault.Light.NoActionBar">
+
+        <activity android:name=".ui.MainActivity" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity android:name=".ui.OnboardingActivity" android:exported="false" />
+        <activity android:name=".ui.ChecklistActivity" android:exported="false" />
+        <activity android:name=".ui.CheckMessageActivity" android:exported="true">
+            <!-- "Share" any text or link from WhatsApp/SMS straight into the checker -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+        </activity>
+        <activity android:name=".ui.RecoverActivity" android:exported="false" />
+        <activity android:name=".ui.SettingsActivity" android:exported="false" />
+        <activity android:name=".ui.GuardianActivity" android:exported="false" />
+        <activity
+            android:name=".ui.WarningActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTop"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true" />
+
+        <!-- F2: Android binds this only after the user grants the Call Screening role,
+             and only for incoming calls from numbers NOT in the user's contacts. -->
+        <service
+            android:name=".call.ScamScreeningService"
+            android:exported="true"
+            android:permission="android.permission.BIND_SCREENING_SERVICE">
+            <intent-filter>
+                <action android:name="android.telecom.CallScreeningService" />
+            </intent-filter>
+        </service>
+
+        <!-- F6 (spike): PHONE_STATE is exempt from implicit-broadcast limits. -->
+        <receiver android:name=".call.PhoneStateReceiver" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.PHONE_STATE" />
+            </intent-filter>
+        </receiver>
+        <receiver android:name=".call.LongCallAlarmReceiver" android:exported="false" />
+
+        <!-- F3 home-screen widget -->
+        <receiver android:name=".widget.HelpWidget" android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/help_widget_info" />
+        </receiver>
+    </application>
+</manifest>
