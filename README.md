@@ -17,6 +17,10 @@ kavach/
 └── docs/               BANK_API.md, PLAY_POLICY.md, PRIVACY.md
 ```
 
+![Scam call warning on the senior's phone, alert on the guardian's phone](docs/screenshots/2-scam-call.png)
+
+![Bank pauses a transfer; the guardian declines it](docs/screenshots/4-declined.png)
+
 ## Try the working prototype (2 minutes)
 
 ```bash
