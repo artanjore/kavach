@@ -21,6 +21,14 @@ kavach/
 
 ![Bank pauses a transfer; the guardian declines it](docs/screenshots/4-declined.png)
 
+## Live demo
+
+**https://claude.ai/artifact/1PLFj74SmFpMuT4vb7R9hW** opens in any browser, phone included, with nothing to install.
+It runs entirely in the browser (`docs/demo/index.html`): the same scam rules as the backend, ported to JavaScript
+and checked against the Python engine by `tests/test_static_demo.py`. Demo data only.
+Rebuild it after changing rules or text with `python backend/scripts/build_static_demo.py`.
+The link is private to its owner until shared from its page on claude.ai. `docs/demo/` can also be served by GitHub Pages.
+
 ## Try the working prototype (2 minutes)
 
 ```bash
