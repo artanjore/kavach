@@ -1,0 +1,6 @@
+# Vercel serves only the static demo (docs/demo). Everything else stays out of the upload.
+/*
+!/vercel.json
+!/docs
+/docs/*
+!/docs/demo
